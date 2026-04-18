@@ -50,7 +50,6 @@ Public Class Form1
     Private btnNavDashboard As Button
     Private btnNavAdd As Button
     Private btnNavView As Button
-    Private btnNavSearch As Button
     Private btnNavExport As Button
     Private btnNavPrint As Button
     Private btnNavExit As Button
@@ -185,7 +184,6 @@ Public Class Form1
         btnNavDashboard = CreateNavButton("    Dashboard")
         btnNavAdd = CreateNavButton("    Add New Student")
         btnNavView = CreateNavButton("    View All Students")
-        btnNavSearch = CreateNavButton("    Search Students")
         btnNavExport = CreateNavButton("    Export to CSV")
         btnNavPrint = CreateNavButton("    Print Report")
         btnNavExit = CreateNavButton("    Exit Application")
@@ -197,11 +195,6 @@ Public Class Form1
         AddHandler btnNavDashboard.Click, Sub(s, ev) ShowDashboard()
         AddHandler btnNavAdd.Click, Sub(s, ev) ShowAddStudent()
         AddHandler btnNavView.Click, Sub(s, ev) ShowViewStudents()
-        AddHandler btnNavSearch.Click, Sub(s, ev)
-                                           ShowViewStudents()
-                                           txtSearch.Focus()
-                                           txtSearch.SelectAll()
-                                       End Sub
         AddHandler btnNavExport.Click, Sub(s, ev) ExportToCSV()
         AddHandler btnNavPrint.Click, Sub(s, ev) PrintReport()
         AddHandler btnNavExit.Click, Sub(s, ev) Me.Close()
@@ -212,7 +205,6 @@ Public Class Form1
         pnlNav.Controls.Add(btnNavPrint)
         pnlNav.Controls.Add(btnNavExport)
         pnlNav.Controls.Add(separator)
-        pnlNav.Controls.Add(btnNavSearch)
         pnlNav.Controls.Add(btnNavView)
         pnlNav.Controls.Add(btnNavAdd)
         pnlNav.Controls.Add(btnNavDashboard)
@@ -413,7 +405,7 @@ Public Class Form1
         tbl.Controls.Add(txtFirstName, 0, 1)
         txtLastName = CreateStyledTextBox()
         tbl.Controls.Add(txtLastName, 1, 1)
-        cboGender = CreateStyledComboBox({"Male", "Female", "Other"})
+        cboGender = CreateStyledComboBox({"Male", "Female"})
         tbl.Controls.Add(cboGender, 2, 1)
 
         tbl.Controls.Add(CreateFieldLabel("Date of Birth *"), 0, 2)
