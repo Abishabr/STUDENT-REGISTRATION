@@ -1,4 +1,4 @@
-﻿<Global.Microsoft.VisualBasic.CompilerServices.DesignerGenerated()>
+<Global.Microsoft.VisualBasic.CompilerServices.DesignerGenerated()>
 Partial Class Form1
     Inherits System.Windows.Forms.Form
 
@@ -22,30 +22,20 @@ Partial Class Form1
     'Do not modify it using the code editor.
     <System.Diagnostics.DebuggerStepThrough()>
     Private Sub InitializeComponent()
-        Label1 = New Label()
+        components = New System.ComponentModel.Container()
         SuspendLayout()
-        ' 
-        ' Label1
-        ' 
-        Label1.AutoSize = True
-        Label1.Location = New Point(239, 9)
-        Label1.Name = "Label1"
-        Label1.Size = New Size(252, 20)
-        Label1.TabIndex = 0
-        Label1.Text = "student Record Management System"
-        ' 
-        ' Form1
-        ' 
-        AutoScaleDimensions = New SizeF(8F, 20F)
+        '
+        ' Form1 - Main application window
+        '
+        AutoScaleDimensions = New SizeF(8.0F, 20.0F)
         AutoScaleMode = AutoScaleMode.Font
-        ClientSize = New Size(800, 450)
-        Controls.Add(Label1)
+        ClientSize = New Size(1400, 850)
+        MinimumSize = New Size(1200, 750)
         Name = "Form1"
-        Text = "Form1"
+        Text = "Student Record Management System"
+        StartPosition = FormStartPosition.CenterScreen
+        Font = New Font("Segoe UI", 10.0F, FontStyle.Regular, GraphicsUnit.Point)
         ResumeLayout(False)
-        PerformLayout()
     End Sub
-
-    Friend WithEvents Label1 As Label
 
 End Class
