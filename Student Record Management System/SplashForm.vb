@@ -17,7 +17,7 @@ Public Class SplashForm
 
     ' Timer for animating the progress bar
     Private WithEvents tmrProgress As New Timer()
-    Private progressValue As Integer = 0
+    Private progressPos As Single = -200
 
     Public Sub New()
         ' Form configuration - borderless centered splash
@@ -28,8 +28,8 @@ Public Class SplashForm
         Me.BackColor = Color.FromArgb(25, 42, 86)
         Me.ShowInTaskbar = False
 
-        ' Start progress animation (1% per tick, 30ms interval = ~3 seconds total)
-        tmrProgress.Interval = 30
+        ' Start progress animation (~60 FPS sweep)
+        tmrProgress.Interval = 16
         tmrProgress.Start()
     End Sub
 
@@ -104,15 +104,26 @@ Public Class SplashForm
             g.FillRectangle(brush, 35, 280, Width - 70, 6)
         End Using
 
-        ' --- Progress bar fill (animated) ---
-        Dim progressWidth = CInt((Width - 70) * progressValue / 100)
-        If progressWidth > 0 Then
+        ' --- Progress bar fill (animated sweep) ---
+        Dim trackWidth = Width - 70
+        Dim segmentWidth As Integer = 250
+        
+        Dim segmentRect As New Rectangle(CInt(35 + progressPos), 280, segmentWidth, 6)
+        If segmentRect.Width > 0 AndAlso segmentRect.Height > 0 Then
             Using brush As New LinearGradientBrush(
-                New Rectangle(35, 280, Math.Max(progressWidth, 1), 6),
-                Color.FromArgb(52, 152, 219),
-                Color.FromArgb(0, 188, 212),
+                segmentRect,
+                Color.Transparent,
+                Color.Transparent,
                 LinearGradientMode.Horizontal)
-                g.FillRectangle(brush, 35, 280, progressWidth, 6)
+                
+                Dim blend As New ColorBlend()
+                blend.Positions = {0.0F, 0.5F, 1.0F}
+                blend.Colors = {Color.FromArgb(0, 0, 188, 212), Color.FromArgb(255, 0, 255, 255), Color.FromArgb(0, 0, 188, 212)}
+                brush.InterpolationColors = blend
+                
+                g.SetClip(New Rectangle(35, 280, trackWidth, 6))
+                g.FillRectangle(brush, segmentRect)
+                g.ResetClip()
             End Using
         End If
 
@@ -127,15 +138,15 @@ Public Class SplashForm
     End Sub
 
     ''' <summary>
-    ''' Timer tick handler - advances progress bar and triggers repaint.
+    ''' Timer tick handler - advances indeterminate progress bar and triggers repaint.
     ''' </summary>
     Private Sub tmrProgress_Tick(sender As Object, e As EventArgs) Handles tmrProgress.Tick
-        progressValue += 1
-        If progressValue >= 100 Then
-            progressValue = 100
-            tmrProgress.Stop()
+        progressPos += 7.0F
+        If progressPos > Width - 35 Then
+            progressPos = -250
         End If
-        Invalidate()
+        ' Optimised invalidate to only redraw the loading text and bar
+        Invalidate(New Rectangle(30, 250, Width - 60, 40))
     End Sub
 
     ''' <summary>
