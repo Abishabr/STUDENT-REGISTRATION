@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "D:\\C# Code Practice\\Student Record Management System\\Student Record Management System\\Student Record Management System.vbproj": {}
+    "D:\\C# Code Practice\\Student_Record_Management_System\\Student Record Management System\\Student Record Management System.vbproj": {}
   },
   "projects": {
-    "D:\\C# Code Practice\\Student Record Management System\\Student Record Management System\\Student Record Management System.vbproj": {
+    "D:\\C# Code Practice\\Student_Record_Management_System\\Student Record Management System\\Student Record Management System.vbproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "D:\\C# Code Practice\\Student Record Management System\\Student Record Management System\\Student Record Management System.vbproj",
+        "projectUniqueName": "D:\\C# Code Practice\\Student_Record_Management_System\\Student Record Management System\\Student Record Management System.vbproj",
         "projectName": "Student Record Management System",
-        "projectPath": "D:\\C# Code Practice\\Student Record Management System\\Student Record Management System\\Student Record Management System.vbproj",
+        "projectPath": "D:\\C# Code Practice\\Student_Record_Management_System\\Student Record Management System\\Student Record Management System.vbproj",
         "packagesPath": "C:\\Users\\Amar\\.nuget\\packages\\",
-        "outputPath": "D:\\C# Code Practice\\Student Record Management System\\Student Record Management System\\obj\\",
+        "outputPath": "D:\\C# Code Practice\\Student_Record_Management_System\\Student Record Management System\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Amar\\AppData\\Roaming\\NuGet\\NuGet.Config",

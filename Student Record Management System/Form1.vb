@@ -20,19 +20,19 @@ Imports System.Drawing.Drawing2D
 Public Class Form1
 
 #Region "Theme Colors - Professional Color Palette"
-    Private Shared ReadOnly ClrPrimaryDark As Color = Color.FromArgb(25, 42, 86)
-    Private Shared ReadOnly ClrPrimary As Color = Color.FromArgb(41, 128, 185)
-    Private Shared ReadOnly ClrPrimaryLight As Color = Color.FromArgb(52, 152, 219)
-    Private Shared ReadOnly ClrAccent As Color = Color.FromArgb(0, 188, 212)
-    Private Shared ReadOnly ClrSuccess As Color = Color.FromArgb(39, 174, 96)
-    Private Shared ReadOnly ClrDanger As Color = Color.FromArgb(231, 76, 60)
-    Private Shared ReadOnly ClrWarning As Color = Color.FromArgb(243, 156, 18)
-    Private Shared ReadOnly ClrBgLight As Color = Color.FromArgb(240, 243, 247)
-    Private Shared ReadOnly ClrCardBg As Color = Color.White
-    Private Shared ReadOnly ClrTextDark As Color = Color.FromArgb(44, 62, 80)
-    Private Shared ReadOnly ClrTextMuted As Color = Color.FromArgb(127, 140, 141)
-    Private Shared ReadOnly ClrNavBg As Color = Color.FromArgb(30, 39, 73)
-    Private Shared ReadOnly ClrNavHover As Color = Color.FromArgb(45, 60, 110)
+    Private ClrPrimaryDark As Color = Color.FromArgb(25, 42, 86)
+    Private ClrPrimary As Color = Color.FromArgb(41, 128, 185)
+    Private ClrPrimaryLight As Color = Color.FromArgb(52, 152, 219)
+    Private ClrAccent As Color = Color.FromArgb(0, 188, 212)
+    Private ClrSuccess As Color = Color.FromArgb(39, 174, 96)
+    Private ClrDanger As Color = Color.FromArgb(231, 76, 60)
+    Private ClrWarning As Color = Color.FromArgb(243, 156, 18)
+    Private ClrBgLight As Color = Color.FromArgb(240, 243, 247)
+    Private ClrCardBg As Color = Color.White
+    Private ClrTextDark As Color = Color.FromArgb(44, 62, 80)
+    Private ClrTextMuted As Color = Color.FromArgb(127, 140, 141)
+    Private ClrNavBg As Color = Color.FromArgb(30, 39, 73)
+    Private ClrNavHover As Color = Color.FromArgb(45, 60, 110)
 #End Region
 
 #Region "Control Declarations"
@@ -81,6 +81,7 @@ Public Class Form1
     Private btnEditSelected As Button
     Private btnDeleteSelected As Button
     Private txtSearch As TextBox
+    Private lblSearchPlaceholder As Label
     Private dgvStudents As DataGridView
 
     ' --- Status Strip ---
@@ -101,14 +102,52 @@ Public Class Form1
 #Region "Constructor & Form Events"
     Public Sub New()
         InitializeComponent()
-        SetupUI()
+        SetupEventHandlers()
+    End Sub
+
+    Private Sub SetupEventHandlers()
+        AddHandler btnNavDashboard.Click, Sub(s, ev) ShowDashboard()
+        AddHandler btnNavAdd.Click, Sub(s, ev) ShowAddStudent()
+        AddHandler btnNavView.Click, Sub(s, ev) ShowViewStudents()
+        AddHandler btnNavExport.Click, Sub(s, ev) ExportToCSV()
+        AddHandler btnNavPrint.Click, Sub(s, ev) PrintReport()
+        AddHandler btnNavExit.Click, Sub(s, ev) Me.Close()
+
+        AddHandler btnSaveMode.Click, Sub(s, ev)
+            If isEditMode Then UpdateStudentRecord() Else AddStudent()
+        End Sub
+        AddHandler btnCancelMode.Click, Sub(s, ev)
+            If isEditMode Then ShowViewStudents() Else ClearFields()
+        End Sub
+
+        AddHandler btnEditSelected.Click, Sub(s, ev) EditSelectedStudent()
+        AddHandler btnDeleteSelected.Click, Sub(s, ev) DeleteSelectedStudent()
+        AddHandler txtSearch.TextChanged, Sub(s, ev)
+            If txtSearch.Text.Length > 0 Then
+                lblSearchPlaceholder.Visible = False
+            Else
+                lblSearchPlaceholder.Visible = True
+            End If
+            SearchStudents()
+        End Sub
+        AddHandler txtSearch.GotFocus, Sub(s, ev)
+            If txtSearch.Text.Length = 0 Then lblSearchPlaceholder.Visible = False
+        End Sub
+        AddHandler txtSearch.LostFocus, Sub(s, ev)
+            If txtSearch.Text.Length = 0 Then lblSearchPlaceholder.Visible = True
+        End Sub
+        AddHandler lblSearchPlaceholder.Click, Sub(s, ev) txtSearch.Focus()
+        AddHandler lblSearchIcon.Click, Sub(s, ev) txtSearch.Focus()
+
+        AddHandler dgvStudents.CellDoubleClick, Sub(s, ev)
+            If ev.RowIndex >= 0 Then EditSelectedStudent()
+        End Sub
     End Sub
 
     Private Sub Form1_Load(sender As Object, e As EventArgs) Handles MyBase.Load
         Try
             DatabaseHelper.InitializeDatabase()
             ShowDashboard()
-            Me.KeyPreview = True
             UpdateStatus("Application loaded successfully")
         Catch ex As Exception
             MessageBox.Show($"Error initializing application: {ex.Message}", "Startup Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
@@ -124,427 +163,32 @@ Public Class Form1
     Private Sub Form1_KeyDown(sender As Object, e As KeyEventArgs) Handles MyBase.KeyDown
         If e.Control Then
             Select Case e.KeyCode
-                Case Keys.S ' Save or Add
+                Case Keys.S
                     If pnlAddEditStudent.Visible Then
                         If isEditMode Then UpdateStudentRecord() Else AddStudent()
                     Else
                         ShowAddStudent()
                     End If
                     e.SuppressKeyPress = True
-                Case Keys.U ' Update (switch to view)
+                Case Keys.U
                     ShowViewStudents()
                     e.SuppressKeyPress = True
-                Case Keys.F ' Focus Search
+                Case Keys.F
                     ShowViewStudents()
                     txtSearch.Focus()
                     txtSearch.SelectAll()
                     e.SuppressKeyPress = True
-                Case Keys.N ' New 
+                Case Keys.N
                     ShowAddStudent()
                     e.SuppressKeyPress = True
-                Case Keys.E ' Export
+                Case Keys.E
                     ExportToCSV()
                     e.SuppressKeyPress = True
-                Case Keys.P ' Print
+                Case Keys.P
                     PrintReport()
                     e.SuppressKeyPress = True
             End Select
         End If
-    End Sub
-#End Region
-
-#Region "UI Setup - Main Layout"
-    Private Sub SetupUI()
-        formErrorProvider = New ErrorProvider()
-        formErrorProvider.BlinkStyle = ErrorBlinkStyle.NeverBlink
-
-        SetupContentPanel()
-        SetupNavPanel()
-        SetupHeaderPanel()
-        SetupStatusStrip()
-
-        ' Build the pages
-        SetupDashboardPanel()
-        SetupAddEditPanel()
-        SetupViewPanel()
-    End Sub
-
-    Private Sub SetupHeaderPanel()
-        pnlHeader = New Panel() With {.Dock = DockStyle.Top, .Height = 60, .BackColor = ClrPrimaryDark}
-        Dim accentLine As New Panel() With {.Dock = DockStyle.Bottom, .Height = 3, .BackColor = ClrAccent}
-        pnlHeader.Controls.Add(accentLine)
-        Dim lblTitle As New Label() With {.Text = "  Student Record Management System", .Font = New Font("Segoe UI Semibold", 16.0F), .ForeColor = Color.White, .BackColor = Color.Transparent, .Dock = DockStyle.Fill, .TextAlign = ContentAlignment.MiddleLeft, .Padding = New Padding(15, 0, 0, 0)}
-        pnlHeader.Controls.Add(lblTitle)
-        Me.Controls.Add(pnlHeader)
-    End Sub
-
-    Private Sub SetupNavPanel()
-        pnlNav = New Panel() With {.Dock = DockStyle.Left, .Width = 230, .BackColor = ClrNavBg}
-
-        btnNavDashboard = CreateNavButton("    Dashboard")
-        btnNavAdd = CreateNavButton("    Add New Student")
-        btnNavView = CreateNavButton("    View All Students")
-        btnNavExport = CreateNavButton("    Export to CSV")
-        btnNavPrint = CreateNavButton("    Print Report")
-        btnNavExit = CreateNavButton("    Exit Application")
-        btnNavExit.ForeColor = Color.FromArgb(231, 76, 60)
-
-        Dim separator As New Panel() With {.Dock = DockStyle.Top, .Height = 1, .BackColor = Color.FromArgb(50, 65, 110), .Margin = New Padding(15, 5, 15, 5)}
-
-        ' Click Handlers
-        AddHandler btnNavDashboard.Click, Sub(s, ev) ShowDashboard()
-        AddHandler btnNavAdd.Click, Sub(s, ev) ShowAddStudent()
-        AddHandler btnNavView.Click, Sub(s, ev) ShowViewStudents()
-        AddHandler btnNavExport.Click, Sub(s, ev) ExportToCSV()
-        AddHandler btnNavPrint.Click, Sub(s, ev) PrintReport()
-        AddHandler btnNavExit.Click, Sub(s, ev) Me.Close()
-
-        ' Dock buttons
-        btnNavExit.Dock = DockStyle.Bottom
-        pnlNav.Controls.Add(btnNavExit)
-        pnlNav.Controls.Add(btnNavPrint)
-        pnlNav.Controls.Add(btnNavExport)
-        pnlNav.Controls.Add(separator)
-        pnlNav.Controls.Add(btnNavView)
-        pnlNav.Controls.Add(btnNavAdd)
-        pnlNav.Controls.Add(btnNavDashboard)
-
-        Dim navHeader As New Panel() With {.Dock = DockStyle.Top, .Height = 55, .BackColor = Color.FromArgb(22, 33, 62)}
-        Dim lblNavBrand As New Label() With {.Text = "  SRMS", .Font = New Font("Segoe UI Semibold", 15.0F), .ForeColor = ClrAccent, .BackColor = Color.Transparent, .Dock = DockStyle.Fill, .TextAlign = ContentAlignment.MiddleCenter}
-        navHeader.Controls.Add(lblNavBrand)
-        Dim navAccent As New Panel() With {.Dock = DockStyle.Bottom, .Height = 1, .BackColor = Color.FromArgb(50, 65, 110)}
-        navHeader.Controls.Add(navAccent)
-        pnlNav.Controls.Add(navHeader)
-        Me.Controls.Add(pnlNav)
-    End Sub
-
-    Private Sub SetupContentPanel()
-        pnlContent = New Panel() With {.Dock = DockStyle.Fill, .BackColor = ClrBgLight, .Padding = New Padding(20)}
-        Me.Controls.Add(pnlContent)
-    End Sub
-
-    Private Sub SetupStatusStrip()
-        mainStatusStrip = New StatusStrip() With {.BackColor = ClrPrimaryDark, .SizingGrip = False}
-        statusLabel = New ToolStripStatusLabel() With {.Text = "  Ready", .ForeColor = Color.White, .Font = New Font("Segoe UI", 9.0F)}
-        mainStatusStrip.Items.Add(statusLabel)
-        Dim lblShortcuts As New ToolStripStatusLabel() With {.Text = "Ctrl+S Save/Add | Ctrl+U Update | Ctrl+F Search | Ctrl+E Export | Ctrl+P Print", .ForeColor = Color.FromArgb(140, 189, 195, 199), .Font = New Font("Segoe UI", 8.0F), .Spring = True, .TextAlign = ContentAlignment.MiddleRight}
-        mainStatusStrip.Items.Add(lblShortcuts)
-        Me.Controls.Add(mainStatusStrip)
-    End Sub
-#End Region
-
-#Region "UI Setup - Dashboard Panel"
-    Private Sub SetupDashboardPanel()
-        pnlDashboard = New Panel() With {.Dock = DockStyle.Fill, .BackColor = ClrBgLight, .Visible = True, .Padding = New Padding(10)}
-
-        ' Hero Banner
-        Dim pnlHero As New Panel() With {.Dock = DockStyle.Top, .Height = 130}
-        AddHandler pnlHero.Paint, Sub(s, e)
-              Dim g = e.Graphics
-              g.SmoothingMode = SmoothingMode.AntiAlias
-              g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.ClearTypeGridFit
-              Dim rect As New Rectangle(0, 0, pnlHero.Width, pnlHero.Height)
-              Using brush As New LinearGradientBrush(rect, Color.FromArgb(30, 39, 73), Color.FromArgb(41, 128, 185), LinearGradientMode.Horizontal)
-                  g.FillRectangle(brush, rect)
-              End Using
-              Using brush As New SolidBrush(Color.FromArgb(15, 255, 255, 255))
-                  g.FillEllipse(brush, pnlHero.Width - 150, -50, 250, 250)
-                  g.FillEllipse(brush, pnlHero.Width - 300, 20, 100, 100)
-              End Using
-              Using font As New Font("Segoe UI Semibold", 22.0F)
-                  g.DrawString("Welcome Back, Administrator", font, Brushes.White, 30, 25)
-              End Using
-              Using font As New Font("Segoe UI", 11.0F)
-                  Using sBrush As New SolidBrush(Color.FromArgb(220, 255, 255, 255))
-                      g.DrawString("Manage your institution's student records efficiently and securely.", font, sBrush, 35, 75)
-                  End Using
-              End Using
-          End Sub
-
-        ' Spacing
-        Dim pnlSpacing1 As New Panel() With {.Dock = DockStyle.Top, .Height = 25, .BackColor = Color.Transparent}
-
-        ' Action Cards Container
-        Dim pnlCards As New FlowLayoutPanel() With {.Dock = DockStyle.Top, .Height = 170, .FlowDirection = FlowDirection.LeftToRight, .WrapContents = False, .BackColor = Color.Transparent, .Padding = New Padding(5, 5, 0, 10)}
-        
-        Dim cardTotal = CreateStatCard("TOTAL STUDENTS", Color.FromArgb(41, 128, 185), Color.FromArgb(0, 188, 212))
-        Dim cardMale = CreateStatCard("MALE STUDENTS", Color.FromArgb(39, 174, 96), Color.FromArgb(46, 204, 113))
-        Dim cardFemale = CreateStatCard("FEMALE STUDENTS", Color.FromArgb(211, 84, 0), Color.FromArgb(243, 156, 18))
-
-        lblTotalCount = DirectCast(cardTotal.Tag, Label)
-        lblMaleCount = DirectCast(cardMale.Tag, Label)
-        lblFemaleCount = DirectCast(cardFemale.Tag, Label)
-
-        pnlCards.Controls.Add(cardTotal)
-        pnlCards.Controls.Add(cardMale)
-        pnlCards.Controls.Add(cardFemale)
-
-        ' System Shortcuts container
-        Dim pnlSpacing2 As New Panel() With {.Dock = DockStyle.Top, .Height = 10, .BackColor = Color.Transparent}
-        Dim pnlQuickActions As New Panel() With {.Dock = DockStyle.Fill, .BackColor = Color.White, .Padding = New Padding(30)}
-        
-        Dim lblQATitle As New Label() With {.Text = "System Shortcuts & Information", .Font = New Font("Segoe UI Semibold", 14.0F), .ForeColor = ClrTextDark, .BackColor = Color.Transparent, .Dock = DockStyle.Top, .Height = 40, .TextAlign = ContentAlignment.MiddleLeft}
-        Dim lblQADesc As New Label() With {
-            .Text = "Manage records with a full suite of highly responsive tools built for educational administrators." & vbCrLf & vbCrLf &
-            "   •  Add New Student  —  Register new admissions with complete profile details" & vbCrLf &
-            "   •  View & Manage    —  Access the student grid to edit or remove records" & vbCrLf &
-            "   •  Export & Print   —  Create physical backups or share spreadsheets instantly" & vbCrLf & vbCrLf &
-            "PRO TIP: Use keyboard shortcuts like Ctrl+S (Save), Ctrl+F (Search), or Ctrl+E (Export) to speed up your workflow.",
-            .Font = New Font("Segoe UI", 11.0F), .ForeColor = Color.FromArgb(100, 110, 120), .BackColor = Color.Transparent, .Dock = DockStyle.Fill, .Padding = New Padding(10, 10, 0, 0)}
-        
-        pnlQuickActions.Controls.Add(lblQADesc)
-        pnlQuickActions.Controls.Add(lblQATitle)
-
-        ' Reverse dock order for Top
-        pnlDashboard.Controls.Add(pnlQuickActions)
-        pnlDashboard.Controls.Add(pnlSpacing2)
-        pnlDashboard.Controls.Add(pnlCards)
-        pnlDashboard.Controls.Add(pnlSpacing1)
-        pnlDashboard.Controls.Add(pnlHero)
-
-        pnlContent.Controls.Add(pnlDashboard)
-    End Sub
-#End Region
-
-#Region "UI Setup - Add/Edit Student Page"
-    Private Sub SetupAddEditPanel()
-        pnlAddEditStudent = New Panel() With {.Dock = DockStyle.Fill, .BackColor = ClrBgLight, .Visible = False, .Padding = New Padding(40, 30, 40, 30)}
-
-        ' Premium Form Card
-        Dim pnlFormCard As New Panel() With {
-            .Dock = DockStyle.Top,
-            .Height = 520,
-            .BackColor = Color.White
-        }
-        
-        AddHandler pnlFormCard.Paint, Sub(s, e)
-             Dim g = e.Graphics
-             Using pen As New Pen(Color.FromArgb(220, 225, 230), 1)
-                 g.DrawRectangle(pen, 0, 0, pnlFormCard.Width - 1, pnlFormCard.Height - 1)
-             End Using
-        End Sub
-
-        ' 1. Header inside the Card
-        Dim pnlFormHeader As New Panel() With {.Dock = DockStyle.Top, .Height = 75, .BackColor = Color.Transparent}
-
-        lblAddEditTitle = New Label() With {.Text = "Add New Student Record", .Font = New Font("Segoe UI Semibold", 18.0F), .ForeColor = ClrPrimaryDark, .BackColor = Color.Transparent, .Dock = DockStyle.Left, .TextAlign = ContentAlignment.MiddleLeft, .Padding = New Padding(30, 0, 0, 0), .AutoSize = True}
-        pnlFormHeader.Controls.Add(lblAddEditTitle)
-
-        lblSelectedID = New Label() With {.Text = "New Record", .Font = New Font("Segoe UI Semibold", 11.0F), .ForeColor = ClrAccent, .BackColor = Color.FromArgb(240, 248, 255), .Dock = DockStyle.Fill, .TextAlign = ContentAlignment.MiddleCenter, .AutoSize = False}
-        ' Wrap label to simulate padding/margin alignment
-        Dim lblIdWrapper As New Panel() With {.Dock = DockStyle.Right, .Width = 180, .Padding = New Padding(20, 20, 20, 20)}
-        lblIdWrapper.Controls.Add(lblSelectedID)
-        pnlFormHeader.Controls.Add(lblIdWrapper)
-
-        Dim headerLine As New Panel() With {.Dock = DockStyle.Bottom, .Height = 1, .BackColor = Color.FromArgb(230, 235, 240)}
-        pnlFormHeader.Controls.Add(headerLine)
-
-        ' 2. Form Fields Grid
-        Dim pnlFormFields = CreateFormFieldsPanel()
-
-        ' 3. Action Buttons Section (Bottom bordered area)
-        Dim pnlActions As New Panel() With {.Dock = DockStyle.Bottom, .Height = 85, .BackColor = Color.FromArgb(250, 251, 252), .Padding = New Padding(30, 20, 30, 20)}
-        Dim actionBorder As New Panel() With {.Dock = DockStyle.Top, .Height = 1, .BackColor = Color.FromArgb(230, 235, 240)}
-        pnlActions.Controls.Add(actionBorder)
-        
-        Dim flowActions As New FlowLayoutPanel() With {.Dock = DockStyle.Right, .Width = 400, .FlowDirection = FlowDirection.RightToLeft, .WrapContents = False}
-        
-        btnSaveMode = CreateActionButton("Save Record", ClrSuccess)
-        btnSaveMode.Size = New Size(160, 42)
-        btnSaveMode.Font = New Font("Segoe UI Semibold", 10.5F)
-        
-        btnCancelMode = CreateActionButton("Clear Form", ClrTextMuted)
-        btnCancelMode.Size = New Size(140, 42)
-        btnCancelMode.Font = New Font("Segoe UI Semibold", 10.5F)
-        btnCancelMode.BackColor = Color.White
-        btnCancelMode.ForeColor = ClrTextDark
-        btnCancelMode.FlatAppearance.BorderColor = Color.FromArgb(200, 205, 210)
-        btnCancelMode.FlatAppearance.BorderSize = 1
-        
-        AddHandler btnSaveMode.Click, Sub(s, ev)
-                                          If isEditMode Then UpdateStudentRecord() Else AddStudent()
-                                      End Sub
-        AddHandler btnCancelMode.Click, Sub(s, ev)
-                                            If isEditMode Then ShowViewStudents() Else ClearFields()
-                                        End Sub
-
-        flowActions.Controls.Add(btnSaveMode)
-        flowActions.Controls.Add(New Panel() With {.Width = 15, .Height = 10, .BackColor = Color.Transparent})
-        flowActions.Controls.Add(btnCancelMode)
-        pnlActions.Controls.Add(flowActions)
-
-        ' Combine all into Card
-        pnlFormCard.Controls.Add(pnlFormFields) ' Fill
-        pnlFormCard.Controls.Add(pnlActions)    ' Bottom
-        pnlFormCard.Controls.Add(pnlFormHeader) ' Top
-
-        pnlAddEditStudent.Controls.Add(pnlFormCard)
-        pnlContent.Controls.Add(pnlAddEditStudent)
-    End Sub
-
-    Private Function CreateFormFieldsPanel() As Panel
-        Dim pnl As New Panel() With {.Dock = DockStyle.Fill, .BackColor = Color.White, .Padding = New Padding(10, 20, 10, 20)}
-        
-        Dim tbl As New TableLayoutPanel() With {.Dock = DockStyle.Fill, .ColumnCount = 3, .RowCount = 6, .Padding = New Padding(20, 0, 20, 0)}
-        tbl.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 33.33F))
-        tbl.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 33.33F))
-        tbl.ColumnStyles.Add(New ColumnStyle(SizeType.Percent, 33.34F))
-        
-        tbl.RowStyles.Add(New RowStyle(SizeType.Absolute, 30))
-        tbl.RowStyles.Add(New RowStyle(SizeType.Absolute, 55))
-        tbl.RowStyles.Add(New RowStyle(SizeType.Absolute, 30))
-        tbl.RowStyles.Add(New RowStyle(SizeType.Absolute, 55))
-        tbl.RowStyles.Add(New RowStyle(SizeType.Absolute, 30))
-        tbl.RowStyles.Add(New RowStyle(SizeType.Absolute, 55))
-
-        tbl.Controls.Add(CreateFieldLabel("First Name *"), 0, 0)
-        tbl.Controls.Add(CreateFieldLabel("Last Name *"), 1, 0)
-        tbl.Controls.Add(CreateFieldLabel("Gender *"), 2, 0)
-
-        txtFirstName = CreateStyledTextBox()
-        tbl.Controls.Add(txtFirstName, 0, 1)
-        txtLastName = CreateStyledTextBox()
-        tbl.Controls.Add(txtLastName, 1, 1)
-        cboGender = CreateStyledComboBox({"Male", "Female"})
-        tbl.Controls.Add(cboGender, 2, 1)
-
-        tbl.Controls.Add(CreateFieldLabel("Date of Birth *"), 0, 2)
-        tbl.Controls.Add(CreateFieldLabel("Department *"), 1, 2)
-        tbl.Controls.Add(CreateFieldLabel("Phone Number"), 2, 2)
-
-        dtpDateOfBirth = New DateTimePicker() With {.Format = DateTimePickerFormat.Short, .Font = New Font("Segoe UI", 11.0F), .Dock = DockStyle.Fill, .Margin = New Padding(8, 5, 20, 5)}
-        tbl.Controls.Add(dtpDateOfBirth, 0, 3)
-        cboDepartment = CreateStyledComboBox({"Computer Science", "Information Technology", "Electrical Engineering", "Mechanical Engineering", "Civil Engineering", "Business Administration", "Mathematics", "Physics", "Biology", "Chemistry"})
-        tbl.Controls.Add(cboDepartment, 1, 3)
-        txtPhone = CreateStyledTextBox()
-        tbl.Controls.Add(txtPhone, 2, 3)
-
-        tbl.Controls.Add(CreateFieldLabel("Email Address"), 0, 4)
-        tbl.Controls.Add(CreateFieldLabel("Address"), 1, 4)
-
-        txtEmail = CreateStyledTextBox()
-        tbl.Controls.Add(txtEmail, 0, 5)
-        txtAddress = CreateStyledTextBox()
-        tbl.SetColumnSpan(txtAddress, 2)
-        tbl.Controls.Add(txtAddress, 1, 5)
-
-        pnl.Controls.Add(tbl)
-        Return pnl
-    End Function
-#End Region
-
-#Region "UI Setup - View Students Page"
-    Private Sub SetupViewPanel()
-        pnlViewStudents = New Panel() With {.Dock = DockStyle.Fill, .BackColor = ClrBgLight, .Visible = False, .Padding = New Padding(40, 30, 40, 30)}
-
-        Dim pnlGridCard As New Panel() With {.Dock = DockStyle.Fill, .BackColor = Color.White}
-        AddHandler pnlGridCard.Paint, Sub(s, e)
-             Dim g = e.Graphics
-             Using pen As New Pen(Color.FromArgb(220, 225, 230), 1)
-                 g.DrawRectangle(pen, 0, 0, pnlGridCard.Width - 1, pnlGridCard.Height - 1)
-             End Using
-        End Sub
-
-        ' 1. Title Header inside the Card
-        Dim pnlHeader As New Panel() With {.Dock = DockStyle.Top, .Height = 70, .BackColor = Color.Transparent}
-        Dim lblTitle As New Label() With {.Text = "Manage Student Records", .Font = New Font("Segoe UI Semibold", 18.0F), .ForeColor = ClrPrimaryDark, .Dock = DockStyle.Fill, .TextAlign = ContentAlignment.MiddleLeft, .Padding = New Padding(20, 0, 0, 0)}
-        pnlHeader.Controls.Add(lblTitle)
-        
-        Dim headerLine As New Panel() With {.Dock = DockStyle.Bottom, .Height = 1, .BackColor = Color.FromArgb(230, 235, 240)}
-        pnlHeader.Controls.Add(headerLine)
-
-        ' 2. Toolbar
-        Dim pnlToolbar As New Panel() With {.Dock = DockStyle.Top, .Height = 70, .BackColor = Color.White, .Padding = New Padding(20, 15, 20, 15)}
-        
-        btnDeleteSelected = CreateActionButton("Delete Record", ClrDanger)
-        btnDeleteSelected.Size = New Size(140, 38)
-        btnDeleteSelected.Dock = DockStyle.Right
-        AddHandler btnDeleteSelected.Click, Sub(s, ev) DeleteSelectedStudent()
-        
-        Dim marginPanel1 As New Panel() With {.Width = 10, .Dock = DockStyle.Right}
-
-        btnEditSelected = CreateActionButton("Edit Record", ClrPrimary)
-        btnEditSelected.Size = New Size(140, 38)
-        btnEditSelected.Dock = DockStyle.Right
-        AddHandler btnEditSelected.Click, Sub(s, ev) EditSelectedStudent()
-
-        ' Modern Search Box
-        Dim pnlSearchContainer As New Panel() With {.Dock = DockStyle.Left, .Width = 400, .Padding = New Padding(0, 1, 0, 1)}
-        Dim pnlSearchInner As New Panel() With {.Dock = DockStyle.Fill, .BackColor = Color.FromArgb(248, 249, 250), .Padding = New Padding(12, 7, 10, 5), .Cursor = Cursors.IBeam}
-        AddHandler pnlSearchInner.Paint, Sub(s, e)
-              Dim g = e.Graphics
-              Using pen As New Pen(Color.FromArgb(215, 220, 225), 1)
-                  g.DrawRectangle(pen, 0, 0, pnlSearchInner.Width - 1, pnlSearchInner.Height - 1)
-              End Using
-        End Sub
-
-        Dim lblIcon As New Label() With {.Text = "🔍", .Dock = DockStyle.Left, .Width = 28, .Font = New Font("Segoe UI", 10.0F), .ForeColor = Color.FromArgb(170, 180, 190), .BackColor = Color.Transparent, .TextAlign = ContentAlignment.TopCenter, .Padding = New Padding(0, 2, 0, 0)}
-        AddHandler lblIcon.Click, Sub(s, e) txtSearch.Focus()
-        
-        txtSearch = New TextBox() With {
-            .Font = New Font("Segoe UI", 10.5F), 
-            .BorderStyle = BorderStyle.None, 
-            .Dock = DockStyle.Fill, 
-            .BackColor = Color.FromArgb(248, 249, 250),
-            .PlaceholderText = "Search by Name, ID, or Department..."
-        }
-        
-        AddHandler pnlSearchInner.Click, Sub(s, e) txtSearch.Focus()
-        AddHandler txtSearch.TextChanged, Sub(s, ev) SearchStudents()
-        
-        pnlSearchInner.Controls.Add(lblIcon)
-        pnlSearchInner.Controls.Add(txtSearch)
-        txtSearch.BringToFront()
-        
-        pnlSearchContainer.Controls.Add(pnlSearchInner)
-
-        pnlToolbar.Controls.Add(btnEditSelected)
-        pnlToolbar.Controls.Add(marginPanel1)
-        pnlToolbar.Controls.Add(btnDeleteSelected)
-        pnlToolbar.Controls.Add(pnlSearchContainer)
-
-        ' 3. Data Grid
-        SetupDataGridView()
-        Dim gridWrapper As New Panel() With {.Dock = DockStyle.Fill, .Padding = New Padding(0, 0, 0, 20)}
-        gridWrapper.Controls.Add(dgvStudents)
-
-        pnlGridCard.Controls.Add(gridWrapper)
-        pnlGridCard.Controls.Add(pnlToolbar)
-        pnlGridCard.Controls.Add(pnlHeader)
-
-        pnlViewStudents.Controls.Add(pnlGridCard)
-        pnlContent.Controls.Add(pnlViewStudents)
-    End Sub
-
-    Private Sub SetupDataGridView()
-        dgvStudents = New DataGridView() With {.Dock = DockStyle.Fill, .BackgroundColor = Color.White, .BorderStyle = BorderStyle.None, .CellBorderStyle = DataGridViewCellBorderStyle.SingleHorizontal, .GridColor = Color.FromArgb(235, 238, 242)}
-        dgvStudents.ColumnHeadersDefaultCellStyle.BackColor = Color.FromArgb(245, 248, 252)
-        dgvStudents.ColumnHeadersDefaultCellStyle.ForeColor = Color.FromArgb(80, 90, 100)
-        dgvStudents.ColumnHeadersDefaultCellStyle.Font = New Font("Segoe UI Semibold", 10.5F)
-        dgvStudents.ColumnHeadersDefaultCellStyle.Padding = New Padding(15, 5, 10, 5)
-        dgvStudents.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleLeft
-        dgvStudents.ColumnHeadersHeight = 45
-        dgvStudents.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.DisableResizing
-        dgvStudents.EnableHeadersVisualStyles = False
-        dgvStudents.DefaultCellStyle.Font = New Font("Segoe UI", 10.0F)
-        dgvStudents.DefaultCellStyle.Padding = New Padding(15, 2, 10, 2)
-        dgvStudents.DefaultCellStyle.SelectionBackColor = Color.FromArgb(235, 245, 255)
-        dgvStudents.DefaultCellStyle.SelectionForeColor = Color.FromArgb(30, 40, 50)
-        dgvStudents.RowTemplate.Height = 45
-        dgvStudents.AlternatingRowsDefaultCellStyle.BackColor = Color.White
-        dgvStudents.SelectionMode = DataGridViewSelectionMode.FullRowSelect
-        dgvStudents.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
-        dgvStudents.ReadOnly = True
-        dgvStudents.AllowUserToAddRows = False
-        dgvStudents.AllowUserToDeleteRows = False
-        dgvStudents.AllowUserToResizeRows = False
-        dgvStudents.MultiSelect = False
-        dgvStudents.RowHeadersVisible = False
-
-        ' Double click opens Edit mode
-        AddHandler dgvStudents.CellDoubleClick, Sub(s, ev)
-                                                    If ev.RowIndex >= 0 Then EditSelectedStudent()
-                                                End Sub
     End Sub
 #End Region
 
