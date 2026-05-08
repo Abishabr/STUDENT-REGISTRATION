@@ -15,7 +15,7 @@ Imports System.Reflection
 <Assembly: System.Reflection.AssemblyCompanyAttribute("Student Record Management System"),  _
  Assembly: System.Reflection.AssemblyConfigurationAttribute("Debug"),  _
  Assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0"),  _
- Assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+32ce386445e528ad55615b5af77d850096f8a8c5"),  _
+ Assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e526e2a9a0ad142165855d5ee831c9b6e5f5695b"),  _
  Assembly: System.Reflection.AssemblyProductAttribute("Student Record Management System"),  _
  Assembly: System.Reflection.AssemblyTitleAttribute("Student Record Management System"),  _
  Assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0"),  _
