@@ -28,6 +28,8 @@ Public Class DatabaseHelper
         Try
             Using conn As New SqliteConnection(ConnStr)
                 conn.Open()
+
+                ' Create Students table
                 Using cmd As New SqliteCommand(
                     "CREATE TABLE IF NOT EXISTS Students (
                         StudentID INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -43,6 +45,38 @@ Public Class DatabaseHelper
                     )", conn)
                     cmd.ExecuteNonQuery()
                 End Using
+
+                ' Create Users table for login authentication
+                Using cmd As New SqliteCommand(
+                    "CREATE TABLE IF NOT EXISTS Users (
+                        UserID INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Username TEXT NOT NULL UNIQUE,
+                        Password TEXT NOT NULL,
+                        FullName TEXT DEFAULT '',
+                        Role TEXT DEFAULT 'Admin',
+                        CreatedDate TEXT NOT NULL
+                    )", conn)
+                    cmd.ExecuteNonQuery()
+                End Using
+
+                ' Seed default admin account if no users exist
+                Using cmdCheck As New SqliteCommand(
+                    "SELECT COUNT(*) FROM Users", conn)
+                    Dim count = Convert.ToInt32(cmdCheck.ExecuteScalar())
+                    If count = 0 Then
+                        Using cmdInsert As New SqliteCommand(
+                            "INSERT INTO Users (Username, Password, FullName, Role, CreatedDate) " &
+                            "VALUES (@u, @p, @fn, @r, @cd)", conn)
+                            cmdInsert.Parameters.AddWithValue("@u", "admin@gmail.com")
+                            cmdInsert.Parameters.AddWithValue("@p", "12345678")
+                            cmdInsert.Parameters.AddWithValue("@fn", "Administrator")
+                            cmdInsert.Parameters.AddWithValue("@r", "Admin")
+                            cmdInsert.Parameters.AddWithValue("@cd", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"))
+                            cmdInsert.ExecuteNonQuery()
+                        End Using
+                    End If
+                End Using
+
             End Using
         Catch ex As Exception
             MessageBox.Show($"Database initialization error: {ex.Message}",
@@ -231,17 +265,88 @@ Public Class DatabaseHelper
         Try
             Using conn As New SqliteConnection(ConnStr)
                 conn.Open()
+
+                ' Delete the student record
+                Dim deleted As Boolean = False
                 Using cmd As New SqliteCommand(
                     "DELETE FROM Students WHERE StudentID = @id", conn)
                     cmd.Parameters.AddWithValue("@id", studentId)
-                    Return cmd.ExecuteNonQuery() > 0
+                    deleted = cmd.ExecuteNonQuery() > 0
                 End Using
+
+                ' If table is now empty, reset the autoincrement counter
+                ' so the next record starts from ID = 1
+                If deleted Then
+                    Using cmdCount As New SqliteCommand(
+                        "SELECT COUNT(*) FROM Students", conn)
+                        Dim remaining = Convert.ToInt32(cmdCount.ExecuteScalar())
+                        If remaining = 0 Then
+                            Using cmdReset As New SqliteCommand(
+                                "DELETE FROM sqlite_sequence WHERE name = 'Students'", conn)
+                                cmdReset.ExecuteNonQuery()
+                            End Using
+                        End If
+                    End Using
+                End If
+
+                Return deleted
             End Using
         Catch ex As Exception
             MessageBox.Show($"Error deleting student: {ex.Message}",
                             "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
             Return False
         End Try
+    End Function
+
+#End Region
+
+#Region "Authentication Operations"
+
+    ''' <summary>
+    ''' Validates a username and password against the Users table.
+    ''' </summary>
+    ''' <param name="username">The username to check</param>
+    ''' <param name="password">The password to verify</param>
+    ''' <returns>True if credentials are valid, False otherwise</returns>
+    Public Shared Function AuthenticateUser(username As String, password As String) As Boolean
+        Try
+            Using conn As New SqliteConnection(ConnStr)
+                conn.Open()
+                Using cmd As New SqliteCommand(
+                    "SELECT COUNT(*) FROM Users WHERE Username = @u AND Password = @p", conn)
+                    cmd.Parameters.AddWithValue("@u", username)
+                    cmd.Parameters.AddWithValue("@p", password)
+                    Return Convert.ToInt32(cmd.ExecuteScalar()) > 0
+                End Using
+            End Using
+        Catch ex As Exception
+            MessageBox.Show($"Authentication error: {ex.Message}",
+                            "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            Return False
+        End Try
+    End Function
+
+    ''' <summary>
+    ''' Gets the full name of an authenticated user for display purposes.
+    ''' </summary>
+    ''' <param name="username">The username to look up</param>
+    ''' <returns>The user's full name, or the username if not found</returns>
+    Public Shared Function GetUserFullName(username As String) As String
+        Try
+            Using conn As New SqliteConnection(ConnStr)
+                conn.Open()
+                Using cmd As New SqliteCommand(
+                    "SELECT FullName FROM Users WHERE Username = @u", conn)
+                    cmd.Parameters.AddWithValue("@u", username)
+                    Dim result = cmd.ExecuteScalar()
+                    If result IsNot Nothing AndAlso Not String.IsNullOrEmpty(result.ToString()) Then
+                        Return result.ToString()
+                    End If
+                End Using
+            End Using
+        Catch ex As Exception
+        End Try
+        Return username
     End Function
 
 #End Region

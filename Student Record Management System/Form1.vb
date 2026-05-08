@@ -103,6 +103,8 @@ Public Class Form1
     Public Sub New()
         InitializeComponent()
         SetupEventHandlers()
+        ' Start invisible — login form will show first, then we restore visibility
+        Me.Opacity = 0
     End Sub
 
     Private Sub SetupEventHandlers()
@@ -148,9 +150,52 @@ Public Class Form1
         Try
             DatabaseHelper.InitializeDatabase()
             ShowDashboard()
-            UpdateStatus("Application loaded successfully")
         Catch ex As Exception
             MessageBox.Show($"Error initializing application: {ex.Message}", "Startup Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+        End Try
+    End Sub
+
+    Private loginShown As Boolean = False
+
+    Private Sub Form1_Shown(sender As Object, e As EventArgs) Handles MyBase.Shown
+        ' Only show login once (Shown can fire again after Hide/Show)
+        If loginShown Then Return
+        loginShown = True
+
+        Try
+            ' Form is invisible (Opacity=0) — show login dialog
+            Dim loginForm As New LoginForm()
+            Dim loginResult = loginForm.ShowDialog()
+            Dim authenticatedEmail = loginForm.AuthenticatedUser
+            loginForm.Dispose()
+
+            If loginResult <> DialogResult.OK Then
+                ' User cancelled login — exit without confirmation prompt
+                RemoveHandler Me.FormClosing, AddressOf Form1_FormClosing
+                Application.Exit()
+                Return
+            End If
+
+            ' Store authenticated user and show personalized welcome
+            My.Application.LoggedInUser = authenticatedEmail
+            Dim fullName = DatabaseHelper.GetUserFullName(authenticatedEmail)
+
+            ' Update the hero title on the dashboard
+            For Each ctrl As Control In pnlDashboard.Controls
+                If TypeOf ctrl Is Panel Then
+                    For Each child As Control In ctrl.Controls
+                        If TypeOf child Is Label AndAlso child.Name = "lblHeroTitle" Then
+                            child.Text = $"Welcome Back, {fullName}"
+                        End If
+                    Next
+                End If
+            Next
+
+            ' Now make the main form visible
+            Me.Opacity = 1
+            UpdateStatus($"Logged in as {fullName}")
+        Catch ex As Exception
+            MessageBox.Show($"Error during login: {ex.Message}", "Login Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
         End Try
     End Sub
 

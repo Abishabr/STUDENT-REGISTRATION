@@ -12,6 +12,12 @@ Namespace My
     Partial Friend Class MyApplication
 
         ''' <summary>
+        ''' Stores the authenticated username after successful login.
+        ''' Accessible from any form via My.Application.LoggedInUser.
+        ''' </summary>
+        Public Property LoggedInUser As String = ""
+
+        ''' <summary>
         ''' Shows the SplashForm while the main form (Form1) is loading.
         ''' This is handled automatically by the VB.NET Application Framework.
         ''' </summary>
