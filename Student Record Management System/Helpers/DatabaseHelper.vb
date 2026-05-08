@@ -136,7 +136,7 @@ Public Class DatabaseHelper
             Using conn As New SqliteConnection(ConnStr)
                 conn.Open()
                 Using cmd As New SqliteCommand(
-                    "SELECT * FROM Students ORDER BY StudentID DESC", conn)
+                    "SELECT * FROM Students ORDER BY StudentID ASC", conn)
                     Using reader = cmd.ExecuteReader()
                         dt.Load(reader)
                     End Using
@@ -165,7 +165,7 @@ Public Class DatabaseHelper
                     "FirstName LIKE @q OR " &
                     "LastName LIKE @q OR " &
                     "Department LIKE @q " &
-                    "ORDER BY StudentID DESC", conn)
+                    "ORDER BY StudentID ASC", conn)
 
                     cmd.Parameters.AddWithValue("@q", $"%{query}%")
                     Using reader = cmd.ExecuteReader()
@@ -248,6 +248,66 @@ Public Class DatabaseHelper
         Catch ex As Exception
             MessageBox.Show($"Error updating student: {ex.Message}",
                             "Database Error", MessageBoxButtons.OK, MessageBoxIcon.Error)
+            Return False
+        End Try
+    End Function
+
+#End Region
+
+#Region "Duplicate Check Operations"
+
+    ''' <summary>
+    ''' Checks if an email address is already registered by another student.
+    ''' </summary>
+    ''' <param name="email">The email to check</param>
+    ''' <param name="excludeStudentId">Student ID to exclude (for edit mode), use -1 for new records</param>
+    ''' <returns>True if the email already exists</returns>
+    Public Shared Function IsEmailExists(email As String, Optional excludeStudentId As Integer = -1) As Boolean
+        If String.IsNullOrWhiteSpace(email) Then Return False
+        Try
+            Using conn As New SqliteConnection(ConnStr)
+                conn.Open()
+                Dim sql = "SELECT COUNT(*) FROM Students WHERE Email = @email"
+                If excludeStudentId > 0 Then
+                    sql &= " AND StudentID <> @id"
+                End If
+                Using cmd As New SqliteCommand(sql, conn)
+                    cmd.Parameters.AddWithValue("@email", email.Trim())
+                    If excludeStudentId > 0 Then
+                        cmd.Parameters.AddWithValue("@id", excludeStudentId)
+                    End If
+                    Return Convert.ToInt32(cmd.ExecuteScalar()) > 0
+                End Using
+            End Using
+        Catch ex As Exception
+            Return False
+        End Try
+    End Function
+
+    ''' <summary>
+    ''' Checks if a phone number is already registered by another student.
+    ''' </summary>
+    ''' <param name="phone">The phone number to check</param>
+    ''' <param name="excludeStudentId">Student ID to exclude (for edit mode), use -1 for new records</param>
+    ''' <returns>True if the phone number already exists</returns>
+    Public Shared Function IsPhoneExists(phone As String, Optional excludeStudentId As Integer = -1) As Boolean
+        If String.IsNullOrWhiteSpace(phone) Then Return False
+        Try
+            Using conn As New SqliteConnection(ConnStr)
+                conn.Open()
+                Dim sql = "SELECT COUNT(*) FROM Students WHERE PhoneNumber = @phone"
+                If excludeStudentId > 0 Then
+                    sql &= " AND StudentID <> @id"
+                End If
+                Using cmd As New SqliteCommand(sql, conn)
+                    cmd.Parameters.AddWithValue("@phone", phone.Trim())
+                    If excludeStudentId > 0 Then
+                        cmd.Parameters.AddWithValue("@id", excludeStudentId)
+                    End If
+                    Return Convert.ToInt32(cmd.ExecuteScalar()) > 0
+                End Using
+            End Using
+        Catch ex As Exception
             Return False
         End Try
     End Function

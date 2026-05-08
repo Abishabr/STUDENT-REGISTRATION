@@ -115,6 +115,13 @@ Public Class Form1
         AddHandler btnNavPrint.Click, Sub(s, ev) PrintReport()
         AddHandler btnNavExit.Click, Sub(s, ev) Me.Close()
 
+        ' Restrict phone number to digits only (and backspace)
+        AddHandler txtPhone.KeyPress, Sub(s, ev)
+            If Not Char.IsDigit(ev.KeyChar) AndAlso Not Char.IsControl(ev.KeyChar) Then
+                ev.Handled = True
+            End If
+        End Sub
+
         AddHandler btnSaveMode.Click, Sub(s, ev)
             If isEditMode Then UpdateStudentRecord() Else AddStudent()
         End Sub
@@ -467,16 +474,39 @@ Public Class Form1
             isValid = False
         End If
 
-        Dim emailError = ValidationHelper.ValidateEmail(txtEmail.Text)
-        If Not String.IsNullOrEmpty(emailError) Then
-            formErrorProvider.SetError(txtEmail, emailError)
+        ' Email is required and must be valid format
+        If String.IsNullOrWhiteSpace(txtEmail.Text) Then
+            formErrorProvider.SetError(txtEmail, "Email is required")
             isValid = False
+        Else
+            Dim emailError = ValidationHelper.ValidateEmail(txtEmail.Text)
+            If Not String.IsNullOrEmpty(emailError) Then
+                formErrorProvider.SetError(txtEmail, emailError)
+                isValid = False
+            Else
+                ' Check if email already exists in database
+                Dim excludeId = If(isEditMode, selectedStudentID, -1)
+                If DatabaseHelper.IsEmailExists(txtEmail.Text.Trim(), excludeId) Then
+                    formErrorProvider.SetError(txtEmail, "This email is already registered")
+                    isValid = False
+                End If
+            End If
         End If
 
-        Dim phoneError = ValidationHelper.ValidatePhone(txtPhone.Text)
-        If Not String.IsNullOrEmpty(phoneError) Then
-            formErrorProvider.SetError(txtPhone, phoneError)
-            isValid = False
+        ' Phone number must be digits only and valid format
+        If Not String.IsNullOrWhiteSpace(txtPhone.Text) Then
+            Dim phoneError = ValidationHelper.ValidatePhone(txtPhone.Text)
+            If Not String.IsNullOrEmpty(phoneError) Then
+                formErrorProvider.SetError(txtPhone, phoneError)
+                isValid = False
+            Else
+                ' Check if phone already exists in database
+                Dim excludeId = If(isEditMode, selectedStudentID, -1)
+                If DatabaseHelper.IsPhoneExists(txtPhone.Text.Trim(), excludeId) Then
+                    formErrorProvider.SetError(txtPhone, "This phone number is already registered")
+                    isValid = False
+                End If
+            End If
         End If
 
         If Not isValid Then UpdateStatus("Please correct the highlighted validation errors")
